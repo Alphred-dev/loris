@@ -1,31 +1,11 @@
-name: Build Payload
+name: Build
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
-    - name: Install tools
-      run: sudo apt-get install -y attr python3
-
-    - name: Create payload
-      run: |
-        python3 -c "
-import os, base64, zlib
-with open('engpc', 'rb') as f:
-    data = f.read()
-fake_label = b'u:object_r:\x00\xff\xfeengpc_exec:s0\x00'
-with open('payload', 'wb') as f:
-    f.write(data)
-os.system('getfattr payload 2>/dev/null')
-os.system('setfattr -n security.selinux -v \"u:object_r:engpc_exec:s0\" payload 2>/dev/null || true')
-os.system('tar --xattrs -czf payload.tar.gz payload')
-print('Done!')
-"
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: payload
-        path: payload.tar.gz
+    - name: test
+      run: echo "Hello World"
+    - name: check engpc
+      run: ls -la engpc || echo "engpc not found"
