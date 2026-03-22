@@ -1,11 +1,45 @@
-name: Build
+name: Build Payload
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: test
-      run: echo "Hello World"
-    - name: check engpc
-      run: ls -la engpc || echo "engpc not found"
+
+    - name: Install tools
+      run: sudo apt-get install -y attr python3
+
+    - name: Create payload with SELinux label
+      run: |
+        python3 << 'PYEOF'
+import os, subprocess
+
+with open('engpc', 'rb') as f:
+    data = f.read()
+print(f"engpc size: {len(data)} bytes")
+
+with open('payload', 'wb') as f:
+    f.write(data)
+
+os.chmod('payload', 0o755)
+
+# Assigner label SELinux engpc_exec
+subprocess.run(['setfattr', '-n', 'security.selinux',
+    '-v', 'u:object_r:engpc_exec:s0\x00',
+    'payload'], check=False)
+
+# Vérifier
+r = subprocess.run(['getfattr', '-n', 'security.selinux',
+    'payload'], capture_output=True, text=True)
+print(f"Label: {r.stdout}")
+
+# Packager avec xattrs
+os.system('tar --xattrs --xattrs-include=security.selinux -czf payload.tar.gz payload')
+print("Done!")
+PYEOF
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: payload
+        path: payload.tar.gz
